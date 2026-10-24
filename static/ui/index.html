@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090a0d">
+  <meta name="description" content="Aureon — Intelligence, Beyond Limits. One considered workspace for your ideas, agents, and creations.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/ui/aureon-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/ui/styles.css?v=4">
+  <title>Aureon — Intelligence, Beyond Limits</title>
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="/landing" aria-label="Aureon home">
+      <img src="/ui/aureon-mark.svg" alt="" width="28" height="28">
+      <span>AUREON</span>
+    </a>
+    <nav class="topnav" aria-label="Main navigation">
+      <a href="/landing" data-route="landing">Discover</a>
+      <a href="#platforms" data-scroll="platforms">Platforms</a>
+      <a href="#guides" data-scroll="guides">Setup</a>
+    </nav>
+    <div class="top-actions">
+      <button class="icon-button install-button" id="install-button" type="button" aria-label="Install Aureon" title="Install Aureon">↓</button>
+      <button class="button button-quiet" id="nav-login" type="button">Log in</button>
+      <a class="button button-primary" href="/app" id="nav-launch">Open workspace <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="landing-page" class="landing-page">
+    <section class="hero section-wrap">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-pulse"></span> A new kind of intelligence workspace</div>
+        <h1>Aureon<span class="hero-dash"> — </span><span>Intelligence,<br class="desktop-break"> Beyond Limits.</span></h1>
+        <p class="hero-subtitle">A quieter place to think bigger. Bring your models, agents, and ideas into one beautifully capable workspace.</p>
+        <div class="hero-actions">
+          <a class="button button-primary button-large" href="/app">Enter the workspace <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="#platforms">Explore the platforms <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="hero-note"><span class="tiny-orbit"></span> Designed for focus. Built for possibility.</div>
+      </div>
+      <div class="hero-art" aria-label="Aureon intelligence visualization">
+        <div class="orbit orbit-a"></div>
+        <div class="orbit orbit-b"></div>
+        <div class="orbit orbit-c"></div>
+        <div class="core-sun"><span>A</span></div>
+        <div class="art-label art-label-top"><i></i> MULTI-MODEL INTELLIGENCE</div>
+        <div class="art-label art-label-bottom">ONE SPACE <span>·</span> OPEN POTENTIAL</div>
+        <div class="art-corner corner-a"></div><div class="art-corner corner-b"></div>
+      </div>
+      <div class="hero-index"><span>01</span><span class="index-line"></span><span>04</span></div>
+    </section>
+
+    <section class="manifesto section-wrap">
+      <div class="section-kicker">AUREON / 001</div>
+      <div class="manifesto-content">
+        <h2>More signal.<br><span>More space to create.</span></h2>
+        <div class="manifesto-aside">
+          <p>Ideas shouldn't have to choose between powerful and personal. Aureon brings capable AI tools into a calm, coherent home — so your attention stays on the work that matters.</p>
+          <a class="text-link" href="/app">Find your flow <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="manifesto-rule"></div>
+      <div class="value-row">
+        <div><span class="value-number">01</span><strong>One intelligent space</strong><p>Conversations, models, and agent work in one considered flow.</p></div>
+        <div><span class="value-number">02</span><strong>Your work, in context</strong><p>Keep the thread, the files, and the next idea close at hand.</p></div>
+        <div><span class="value-number">03</span><strong>Made to move with you</strong><p>A focused workspace on desktop, with an installable mobile experience.</p></div>
+      </div>
+    </section>
+
+    <section class="platforms-section section-wrap" id="platforms">
+      <div class="section-heading">
+        <div><div class="section-kicker">THE AUREON COLLECTION / 002</div><h2>Meet Aureon<br><span>where you are.</span></h2></div>
+        <p>Choose your platform. Each release will appear here as soon as it is published.</p>
+      </div>
+      <div class="download-grid" id="download-grid">
+        <div class="download-empty"><span class="loader-dot"></span> Checking the release shelf…</div>
+      </div>
+      <p class="download-disclaimer">Only download releases linked from this official Aureon site. Verify the publisher and signature before installing.</p>
+    </section>
+
+    <section class="guides-section section-wrap" id="guides">
+      <div class="section-heading guide-heading">
+        <div><div class="section-kicker">A GOOD PLACE TO BEGIN / 003</div><h2>From first click<br><span>to first thought.</span></h2></div>
+        <p>A few simple steps to set up your workspace securely.</p>
+      </div>
+      <div class="guide-list">
+        <article class="guide-step"><span class="guide-count">01</span><div><h3>Choose your platform</h3><p>Use a release card above to download the build for your device. Install only files from the official Aureon distribution link, and check the version and publisher details before opening.</p></div><span class="guide-arrow">↘</span></article>
+        <article class="guide-step"><span class="guide-count">02</span><div><h3>Keep your device protected</h3><p>If SmartScreen or macOS blocks an unsigned build, don't disable system protection or override the warning unless Aureon has published a signed, verified release and you have confirmed its signature. Until then, use the web workspace instead.</p></div><span class="guide-arrow">↘</span></article>
+        <article class="guide-step"><span class="guide-count">03</span><div><h3>Connect your model providers</h3><p>Provider credentials are configured by your deployment administrator on the server. Create keys only in each provider's official dashboard, then ask your administrator to configure them securely. Never paste API keys into chat or share them in the browser.</p></div><span class="guide-arrow">↘</span></article>
+        <article class="guide-step"><span class="guide-count">04</span><div><h3>Sign in and make it yours</h3><p>Use a verified email or mobile number with a strong password. Your threads stay in your sidebar, while model options reflect the providers configured for your account.</p></div><a class="guide-arrow guide-cta" href="/app" aria-label="Open workspace">↗</a></article>
+      </div>
+    </section>
+
+    <section class="closing section-wrap">
+      <span class="closing-mark">A</span>
+      <div class="section-kicker">YOUR NEXT IDEA IS WAITING</div>
+      <h2>Begin with a thought.<br><span>Go beyond it.</span></h2>
+      <a class="button button-primary button-large" href="/app">Open Aureon <span aria-hidden="true">↗</span></a>
+    </section>
+  </main>
+
+  <main id="app-page" class="app-page hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <a class="brand sidebar-brand" href="/landing"><img src="/ui/aureon-mark.svg" alt="" width="26" height="26"><span>AUREON</span></a>
+        <button class="icon-button" id="collapse-sidebar" type="button" aria-label="Collapse sidebar">‹</button>
+      </div>
+      <button class="new-chat-button" id="new-chat" type="button"><span>＋</span> New conversation <kbd>⌘ K</kbd></button>
+      <div class="sidebar-label">YOUR SPACE <button class="tiny-action" id="refresh-history" type="button" title="Refresh">↻</button></div>
+      <div class="thread-list" id="thread-list"><div class="side-empty">Your conversations will appear here.</div></div>
+      <div class="side-block">
+        <div class="sidebar-label">YOUR ASSETS</div>
+        <div class="asset-list" id="asset-list"><div class="side-empty">Files you stage appear here.</div></div>
+      </div>
+      <div class="side-block domain-block">
+        <div class="sidebar-label">ACTIVE ROUTES <span class="route-status"></span></div>
+        <div class="domain-list" id="domain-list"><div class="side-empty">No published routes yet.</div></div>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="credit-card">
+          <div class="credit-label">YOUR PLAN <span class="credit-spark">✳</span></div>
+          <div class="credit-value" id="credit-value">— <small>credits</small></div>
+          <div class="credit-progress"><span id="credit-progress"></span></div>
+          <div class="credit-caption" id="credit-caption">Loading account status…</div>
+        </div>
+        <button class="profile-button" id="profile-button" type="button">
+          <span class="avatar" id="profile-avatar">A</span>
+          <span class="profile-copy"><strong id="profile-name">Your account</strong><small id="profile-plan">Personal workspace</small></span>
+          <span class="profile-menu">···</span>
+        </button>
+        <div class="profile-menu-pop hidden" id="profile-menu"><button type="button" id="logout-button">Sign out</button></div>
+      </div>
+    </aside>
+
+    <section class="chat-workspace">
+      <header class="workspace-topbar">
+        <button class="icon-button mobile-menu" id="mobile-menu" type="button" aria-label="Open sidebar">☰</button>
+        <div class="model-control">
+          <span class="model-glyph">✳</span>
+          <select id="model-select" aria-label="Choose an AI model"><option>Loading models…</option></select>
+          <span class="select-chevron">⌄</span>
+        </div>
+        <div class="workspace-top-actions">
+          <span class="connection-state"><i></i><span id="connection-label">Ready</span></span>
+          <button class="icon-button canvas-toggle" id="canvas-toggle" type="button" aria-label="Toggle side canvas" title="Open side canvas">▣</button>
+        </div>
+      </header>
+      <div class="conversation" id="conversation">
+        <div class="welcome-panel" id="welcome-panel">
+          <div class="welcome-sigil"><span>A</span></div>
+          <div class="welcome-overline">AUREON / YOUR INTELLIGENCE SPACE</div>
+          <h1>What would you<br><span>like to explore?</span></h1>
+          <p>Choose a model, bring a question, and let the next idea unfold.</p>
+          <div class="starter-grid">
+            <button class="starter-card" data-prompt="Help me explore an idea I've been thinking about."><span>✧</span><strong>Explore an idea</strong><small>Turn a first thought into a path forward.</small></button>
+            <button class="starter-card" data-prompt="Help me write a clear, thoughtful first draft."><span>⌁</span><strong>Find the right words</strong><small>Start a draft, refine a message, or edit.</small></button>
+            <button class="starter-card" data-prompt="Help me understand this topic step by step."><span>◌</span><strong>Understand something</strong><small>Unpack a big question at your pace.</small></button>
+            <button class="starter-card" data-prompt="Help me make a practical plan for my next project."><span>↗</span><strong>Make a plan</strong><small>Give your next project a clear shape.</small></button>
+          </div>
+        </div>
+        <div class="message-list" id="message-list"></div>
+      </div>
+      <div class="composer-wrap">
+        <div class="attachment-tray hidden" id="attachment-tray"></div>
+        <form class="composer" id="composer-form">
+          <label class="attach-button" for="file-input" title="Stage files locally">＋</label>
+          <input id="file-input" type="file" multiple hidden>
+          <textarea id="prompt-input" rows="1" placeholder="Message Aureon…" maxlength="30000" aria-label="Your message"></textarea>
+          <button class="send-button" id="send-button" type="submit" aria-label="Send message">↑</button>
+        </form>
+        <div class="composer-foot"><span>Thoughtful answers start with good questions.</span><span class="local-file-note">Files are staged locally; this API currently sends text only.</span></div>
+      </div>
+    </section>
+
+    <aside class="canvas-panel hidden" id="canvas-panel">
+      <div class="canvas-header"><div><span class="section-kicker">LIVE CANVAS</span><h2>Agent view</h2></div><button class="icon-button" id="close-canvas" type="button" aria-label="Close canvas">×</button></div>
+      <div class="canvas-tabs"><button class="canvas-tab active" data-canvas-tab="preview">Preview</button><button class="canvas-tab" data-canvas-tab="activity">Activity</button></div>
+      <div class="canvas-content" id="canvas-preview">
+        <div class="preview-toolbar"><span class="preview-lock">⌑</span><input id="preview-url" value="aureon://workspace/preview" aria-label="Preview address"><button id="preview-go" type="button">↻</button></div>
+        <div class="preview-frame" id="preview-frame"><div class="preview-placeholder"><div class="preview-orbit"></div><span>YOUR CANVAS</span><p>Published site previews and agent activity will appear here.</p><button class="button button-quiet" id="preview-current-site" type="button">Preview a published site</button></div></div>
+      </div>
+      <div class="canvas-content hidden" id="canvas-activity"><div class="activity-empty">No agent activity yet.<br><span>Start a task to see its progress.</span></div></div>
+      <div class="canvas-footer"><span class="canvas-dot"></span> Private workspace <span class="canvas-footer-right">PREVIEW</span></div>
+    </aside>
+  </main>
+
+  <footer class="site-footer" id="site-footer">
+    <div class="footer-main section-wrap">
+      <a class="brand footer-brand" href="/landing"><img src="/ui/aureon-mark.svg" alt="" width="27" height="27"><span>AUREON</span></a>
+      <p class="footer-motto" id="footer-motto">Intelligence, Beyond Limits.</p>
+      <div class="footer-links">
+        <div><span>EXPLORE</span><a href="/landing#platforms">Platforms</a><a href="/landing#guides">Setup guide</a><a href="/app">Workspace</a></div>
+        <div><span>CONNECT</span><a id="support-link" href="mailto:support@aureon.ai">Support</a><button class="footer-admin" id="admin-open" type="button">Admin</button></div>
+        <div class="footer-signoff"><span>CREATED BY</span><strong id="creator-name">Aureon Studio</strong><small id="copyright-notice">© 2026 Aureon. All rights reserved.</small></div>
+      </div>
+    </div>
+    <div class="footer-bottom section-wrap"><span>MADE FOR THE SPACE BETWEEN A QUESTION AND A BREAKTHROUGH.</span><a href="/app">BACK TO AUREON ↑</a></div>
+  </footer>
+
+  <div class="modal-backdrop hidden" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <section class="auth-card">
+      <button class="modal-close" data-close-modal type="button" aria-label="Close">×</button>
+      <div class="auth-brand"><img src="/ui/aureon-mark.svg" alt="" width="36" height="36"></div>
+      <div class="section-kicker">YOUR SPACE STARTS HERE</div>
+      <h2 id="auth-title">Welcome to<br><span>Aureon.</span></h2>
+      <p class="auth-subtitle">Sign in or create an account to continue.</p>
+      <div class="auth-tabs"><button class="active" data-auth-tab="login" type="button">Log in</button><button data-auth-tab="signup" type="button">Create account</button></div>
+      <form id="auth-form" class="auth-form">
+        <label class="form-label" for="account-identifier">Email or mobile number</label>
+        <input id="account-identifier" name="account_identifier" type="text" autocomplete="username" placeholder="you@example.com or +14155552671" required>
+        <label class="form-label" for="account-password">Password</label>
+        <input id="account-password" name="password" type="password" autocomplete="current-password" placeholder="At least 12 characters" required>
+        <div id="coupon-field" class="hidden"><label class="form-label" for="coupon-code">Premium Access Coupon Code <span>(Optional)</span></label><input id="coupon-code" name="coupon_code" type="text" autocomplete="off" placeholder="Enter your coupon code"></div>
+        <div class="verification-field hidden" id="verification-field"><label class="form-label" for="verification-code">Verification code</label><input id="verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter the code sent to you"></div>
+        <div class="auth-error hidden" id="auth-error" role="alert"></div>
+        <button class="button button-primary auth-submit" type="submit" id="auth-submit">Continue</button>
+      </form>
+      <div class="auth-divider"><span>OR CONTINUE WITH</span></div>
+      <a class="github-button" href="/api/auth/github"><span class="github-mark">◉</span> Continue with GitHub</a>
+      <div class="password-note"><span>⌑</span> A verified email or mobile number and private password are required.</div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+    <section class="auth-card admin-card">
+      <button class="modal-close" data-close-modal type="button" aria-label="Close">×</button>
+      <div class="section-kicker">RESTRICTED / ADMIN</div>
+      <h2 id="admin-title">Site settings<span>.</span></h2>
+      <form id="admin-login-form" class="auth-form">
+        <label class="form-label" for="admin-username">Administrator username</label><input id="admin-username" autocomplete="username" required>
+        <label class="form-label" for="admin-password">Password</label><input id="admin-password" type="password" autocomplete="current-password" required>
+        <div class="auth-error hidden" id="admin-error" role="alert"></div>
+        <button class="button button-primary auth-submit" type="submit">Unlock settings</button>
+      </form>
+      <form id="admin-content-form" class="auth-form hidden">
+        <label class="form-label" for="cms-creator">Creator name</label><input id="cms-creator" maxlength="200">
+        <label class="form-label" for="cms-support">Support email</label><input id="cms-support" type="email" maxlength="200">
+        <label class="form-label" for="cms-copyright">Copyright notice</label><input id="cms-copyright" maxlength="300">
+        <label class="form-label" for="cms-motto">Footer tagline</label><input id="cms-motto" maxlength="300">
+        <label class="form-label" for="cms-downloads">Downloads JSON</label><textarea id="cms-downloads" rows="6" spellcheck="false" placeholder='[{"platform":"windows","label":"Windows","version":"Coming soon","url":"https://…"}]'></textarea>
+        <div class="auth-error hidden" id="cms-error" role="alert"></div>
+        <div class="cms-actions"><button class="button button-primary" type="submit">Publish updates</button><button class="button button-quiet" id="admin-logout" type="button">Lock</button></div>
+      </form>
+    </section>
+  </div>
+  <div class="toast hidden" id="toast" role="status"></div>
+  <script src="/ui/app.js?v=4" defer></script>
+</body>
+</html>

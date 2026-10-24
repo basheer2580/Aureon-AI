@@ -1,0 +1,22 @@
+{
+  "id": "/app",
+  "name": "Aureon — Intelligence, Beyond Limits",
+  "short_name": "Aureon",
+  "description": "A considered workspace for your ideas, AI models, and agents.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#090a0d",
+  "theme_color": "#090a0d",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/ui/aureon-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
