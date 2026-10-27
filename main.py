@@ -290,6 +290,14 @@ def _supabase_service_key() -> str:
     return _required_env("SUPABASE_SERVICE_ROLE_KEY")
 
 
+def _supabase_service_headers(content_type: str = "application/json") -> dict[str, str]:
+    key = _supabase_service_key()
+    headers = {"apikey": key, "Content-Type": content_type}
+    if not key.startswith("sb_secret_"):
+        headers["Authorization"] = f"Bearer {key}"
+    return headers
+
+
 async def _authenticated_user(access_token: str) -> dict[str, Any]:
     headers = {
         "apikey": _supabase_anon_key(),
@@ -418,11 +426,7 @@ async def _supabase_request(
     payload: Any = None,
     prefer: str | None = None,
 ) -> Any:
-    headers = {
-        "apikey": _supabase_service_key(),
-        "Authorization": f"Bearer {_supabase_service_key()}",
-        "Content-Type": "application/json",
-    }
+    headers = _supabase_service_headers()
     if prefer:
         headers["Prefer"] = prefer
 
@@ -463,12 +467,7 @@ async def _supabase_request(
 
 
 async def _supabase_storage_request(method: str, resource: str, payload: Any) -> Any:
-    service_key = _supabase_service_key()
-    headers = {
-        "apikey": service_key,
-        "Authorization": f"Bearer {service_key}",
-        "Content-Type": "application/json",
-    }
+    headers = _supabase_service_headers()
     try:
         async with httpx.AsyncClient(timeout=SUPABASE_TIMEOUT_SECONDS) as client:
             response = await client.request(
@@ -535,15 +534,11 @@ async def _delete_user_media(user_id: str) -> None:
 
 
 async def _delete_supabase_auth_user(user_id: str) -> None:
-    service_key = _supabase_service_key()
     try:
         async with httpx.AsyncClient(timeout=SUPABASE_TIMEOUT_SECONDS) as client:
             response = await client.delete(
                 f"{_supabase_url()}/auth/v1/admin/users/{user_id}",
-                headers={
-                    "apikey": service_key,
-                    "Authorization": f"Bearer {service_key}",
-                },
+                headers=_supabase_service_headers(),
             )
     except httpx.HTTPError as exc:
         logger.exception("Supabase Auth account deletion failed")
@@ -1986,12 +1981,8 @@ async def _generate_and_upload_media(
     content_type = "image/png" if media_kind == "image" else "video/mp4"
     extension = "png" if media_kind == "image" else "mp4"
     object_path = f"{user_id}/{uuid.uuid4().hex}.{extension}"
-    storage_headers = {
-        "apikey": _supabase_service_key(),
-        "Authorization": f"Bearer {_supabase_service_key()}",
-        "Content-Type": content_type,
-        "x-upsert": "false",
-    }
+    storage_headers = _supabase_service_headers(content_type)
+    storage_headers["x-upsert"] = "false"
     try:
         async with httpx.AsyncClient(timeout=PROVIDER_TIMEOUT_SECONDS) as client:
             upload = await client.post(
