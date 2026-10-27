@@ -7,6 +7,8 @@
   const PREMIUM_KEY = "aureon_premium";
   const ADMIN_KEY = "aureon_admin_token";
   const OAUTH_CONSENT_KEY = "aureon_oauth_privacy_consent_pending";
+  const THEME_KEY = "aureon_theme";
+  const THEMES = new Set(["violet", "blue", "teal", "green", "rose", "amber", "black", "white"]);
   const ADMIN_IDENTIFIER = "admin@aureon.ai";
   const MAX_FILES = 15;
   const API_BASE_URL = String(window.AUREON_CONFIG?.apiBaseUrl || "").replace(/\/+$/, "");
@@ -38,6 +40,18 @@
   const landing = $("#landing-page");
   const appPage = $("#app-page");
   const footer = $("#site-footer");
+  function applyTheme(theme, persist = false) {
+    const selectedTheme = THEMES.has(theme) ? theme : "violet";
+    document.documentElement.dataset.theme = selectedTheme;
+    const themeColor = selectedTheme === "white" ? "#ffffff" : selectedTheme === "black" ? "#000000" : "#090a0d";
+    $('meta[name="theme-color"]').setAttribute("content", themeColor);
+    $$("[data-theme-select]").forEach((select) => {
+      select.value = selectedTheme;
+    });
+    if (persist) localStorage.setItem(THEME_KEY, selectedTheme);
+  }
+
+  applyTheme(localStorage.getItem(THEME_KEY) || "violet");
   if (onAppRoute) {
     landing.classList.add("hidden");
     footer.classList.add("hidden");
@@ -948,6 +962,12 @@
   }
 
   function bindEvents() {
+    $$("[data-theme-select]").forEach((select) => {
+      select.addEventListener("change", () => applyTheme(select.value, true));
+    });
+    window.addEventListener("storage", (event) => {
+      if (event.key === THEME_KEY) applyTheme(event.newValue || "violet");
+    });
     $(".github-button").href = apiUrl("/api/auth/github");
     $(".github-button").addEventListener("click", (event) => {
       event.preventDefault();
