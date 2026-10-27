@@ -279,7 +279,10 @@ def _required_env(name: str) -> str:
 
 
 def _supabase_url() -> str:
-    return _required_env("SUPABASE_URL").rstrip("/")
+    url = _required_env("SUPABASE_URL").rstrip("/")
+    if url.endswith("/rest/v1"):
+        url = url[:-len("/rest/v1")]
+    return url
 
 
 def _supabase_anon_key() -> str:
