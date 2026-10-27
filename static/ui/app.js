@@ -116,6 +116,7 @@
     state.authMode = mode;
     state.authStep = "credentials";
     $("#auth-title").innerHTML = mode === "signup" ? "Start with<br><span>Aureon.</span>" : "Welcome to<br><span>Aureon.</span>";
+    $("#auth-subtitle").textContent = "Sign in or create an account to continue.";
     $("#auth-submit").textContent = mode === "signup" ? "Create account" : "Continue";
     $("#account-password").autocomplete = mode === "signup" ? "new-password" : "current-password";
     $("#account-password").minLength = mode === "signup" ? 12 : 1;
@@ -126,8 +127,13 @@
     privacyConsent.required = mode === "signup";
     if (mode !== "signup") privacyConsent.checked = false;
     $("#verification-field").classList.add("hidden");
+    $("#verification-instructions").textContent = "";
+    $("#verification-code").required = false;
     $("#account-identifier").disabled = false;
     $("#account-password").disabled = false;
+    $("#password-note-copy").textContent = mode === "signup"
+      ? "After signup, check your email for a confirmation link or your phone for an SMS code. WhatsApp delivery requires separate Supabase provider configuration."
+      : "A verified email or mobile number and private password are required.";
     $$(".auth-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.authTab === mode));
     setError($("#auth-error"), "");
   }
@@ -137,12 +143,20 @@
     state.pendingIdentifier = identifier;
     $("#verification-field").classList.remove("hidden");
     $("#account-password").classList.add("hidden");
+    $("#account-password").disabled = true;
+    $("#verification-code").required = true;
     $("#coupon-field").classList.add("hidden");
     $("#account-identifier").disabled = true;
     $("#auth-submit").textContent = "Verify account";
     $("#privacy-consent-field").classList.add("hidden");
     $("#privacy-consent").required = false;
-    setError($("#auth-error"), "Enter the verification code sent to your email or mobile number.");
+    $("#auth-title").innerHTML = "Verify your<br><span>account.</span>";
+    $("#auth-subtitle").textContent = "One more step before you can sign in.";
+    const instructions = identifier.includes("@")
+      ? "Supabase sends a confirmation email. Check your inbox and spam folder, then open its confirmation link. If the email contains a code instead, enter it above."
+      : "Check your SMS messages for the Supabase verification code and enter it above. Aureon currently requests SMS; WhatsApp requires separate provider/channel setup in Supabase.";
+    $("#verification-instructions").textContent = instructions;
+    setError($("#auth-error"), "");
     $("#verification-code").focus();
   }
 
@@ -171,6 +185,7 @@
     $("#account-password").classList.remove("hidden");
     $("#account-identifier").disabled = false;
     $("#account-password").disabled = false;
+    $("#verification-code").required = false;
     $("#account-password").value = "";
     $("#verification-code").value = "";
     $("#verification-field").classList.add("hidden");
@@ -773,7 +788,10 @@
           showVerificationStep(identifier);
           return;
         }
-        showVerificationStep(identifier);
+        restoreAuthForm();
+        switchAuthMode("login");
+        $("#account-identifier").value = identifier;
+        setError(errorBox, "Your account is ready. Sign in with your password to continue.");
         return;
       }
       if (

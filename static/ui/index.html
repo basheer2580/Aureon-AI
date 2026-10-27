@@ -226,13 +226,13 @@
           <label for="privacy-consent">I agree to the Privacy Policy</label>
           <button type="button" id="privacy-policy-open">Read policy</button>
         </div>
-        <div class="verification-field hidden" id="verification-field"><label class="form-label" for="verification-code">Verification code</label><input id="verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter the code sent to you"></div>
+        <div class="verification-field hidden" id="verification-field"><label class="form-label" for="verification-code">Verification code</label><input id="verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter the code sent to you"><p class="verification-instructions" id="verification-instructions" role="status"></p></div>
         <div class="auth-error hidden" id="auth-error" role="alert"></div>
         <button class="button button-primary auth-submit" type="submit" id="auth-submit">Continue</button>
       </form>
       <div class="auth-divider"><span>OR CONTINUE WITH</span></div>
       <a class="github-button" href="/api/auth/github"><span class="github-mark">◉</span> Continue with GitHub</a>
-      <div class="password-note"><span>⌑</span> A verified email or mobile number and private password are required.</div>
+      <div class="password-note"><span>⌑</span><span id="password-note-copy">A verified email or mobile number and private password are required.</span></div>
     </section>
   </div>
 
@@ -275,6 +275,6 @@
   </div>
   <div class="toast hidden" id="toast" role="status"></div>
   <script src="/ui/runtime-config.js"></script>
-  <script src="/ui/app.js?v=12" defer></script>
+  <script src="/ui/app.js?v=13" defer></script>
 </body>
 </html>

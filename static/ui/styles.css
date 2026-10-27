@@ -409,6 +409,8 @@ button { cursor: pointer; }
 .github-mark { font-size: 15px; }
 .password-note { display: flex; align-items: center; gap: 7px; margin-top: 17px; color: #706d78; font-size: 8px; line-height: 1.6; }
 .password-note span { color: #b8a2da; font-size: 12px; }
+.password-note #password-note-copy { color: inherit; }
+.verification-instructions { margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .auth-error { margin-top: 12px; padding: 9px 10px; border: 1px solid rgba(241,133,133,.2); border-radius: 5px; color: #f1aaaa; background: rgba(131,45,45,.12); font-size: 9px; line-height: 1.5; }
 .admin-card { width: min(500px,100%); }
 .admin-card h2 { margin-bottom: 24px; }
