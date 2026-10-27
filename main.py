@@ -505,7 +505,15 @@ async def _supabase_storage_request(method: str, resource: str, payload: Any) ->
         raise HTTPException(status_code=503, detail="Media storage is unavailable") from exc
     if response.status_code >= 400:
         logger.error("Supabase Storage returned HTTP %s for %s", response.status_code, resource)
-        raise HTTPException(status_code=503, detail="Media storage request failed")
+        if response.status_code == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Media storage resource not found: {resource}",
+            )
+        raise HTTPException(
+            status_code=503,
+            detail=f"Media storage request failed (HTTP {response.status_code})",
+        )
     if not response.content:
         return None
     try:
@@ -522,11 +530,17 @@ async def _list_user_media_paths(user_id: str) -> list[str]:
         prefix = prefixes.pop()
         offset = 0
         while True:
-            rows = await _supabase_storage_request(
-                "POST",
-                "object/list/aureon-media",
-                {"prefix": prefix, "limit": 1000, "offset": offset},
-            )
+            try:
+                rows = await _supabase_storage_request(
+                    "POST",
+                    "object/list/aureon-media",
+                    {"prefix": prefix, "limit": 1000, "offset": offset},
+                )
+            except HTTPException as exc:
+                if exc.status_code == 404:
+                    logger.info("Supabase media bucket is unavailable; no generated media can be listed")
+                    return []
+                raise
             if not isinstance(rows, list):
                 raise HTTPException(status_code=502, detail="Media storage returned an invalid listing")
             for item in rows:
@@ -569,7 +583,10 @@ async def _delete_supabase_auth_user(user_id: str) -> None:
         raise HTTPException(status_code=503, detail="Account deletion service is unavailable") from exc
     if response.status_code not in (200, 204):
         logger.error("Supabase Auth account deletion returned HTTP %s", response.status_code)
-        raise HTTPException(status_code=503, detail="Account deletion could not be completed")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Account deletion could not be completed (Supabase Auth HTTP {response.status_code})",
+        )
 
 
 def _delete_user_site_files(user_id: str) -> None:

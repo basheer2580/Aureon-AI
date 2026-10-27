@@ -1,16 +1,16 @@
 "use strict";
 
-const CACHE_NAME = "aureon-shell-v17";
+const CACHE_NAME = "aureon-shell-v18";
 const APP_SHELL = [
   "/",
   "/app",
   "/landing",
-  "/manifest.webmanifest?v=17",
+  "/manifest.webmanifest?v=18",
   "/ui/styles.css",
-  "/ui/app.js?v=17",
+  "/ui/app.js?v=18",
   "/ui/runtime-config.js",
-  "/ui/logo.png?v=17",
-  "/ui/aureon-app-icon.png?v=17",
+  "/ui/logo.png?v=18",
+  "/ui/aureon-app-icon.png?v=18",
 ];
 
 self.addEventListener("install", (event) => {

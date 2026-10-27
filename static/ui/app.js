@@ -119,6 +119,7 @@
     $("#auth-title").innerHTML = mode === "signup" ? "Start with<br><span>Aureon.</span>" : "Welcome to<br><span>Aureon.</span>";
     $("#auth-subtitle").textContent = "Sign in or create an account to continue.";
     $("#auth-submit").textContent = mode === "signup" ? "Create account" : "Continue";
+    $('label[for="account-password"]').textContent = mode === "signup" ? "Create password" : "Password";
     $("#account-password").autocomplete = mode === "signup" ? "new-password" : "current-password";
     $("#account-password").minLength = mode === "signup" ? 12 : 1;
     $("#account-password").placeholder = mode === "signup" ? "At least 12 characters" : "Enter your password";
@@ -172,6 +173,7 @@
     $("#account-password").autocomplete = "new-password";
     $("#account-password").minLength = 12;
     $("#account-password").placeholder = "At least 12 characters";
+    $('label[for="account-password"]').textContent = "Create password";
     $("#coupon-field").classList.add("hidden");
     $("#privacy-consent-field").classList.add("hidden");
     $("#privacy-consent").required = false;
@@ -191,7 +193,11 @@
     $("#verification-code").value = "";
     $("#verification-field").classList.add("hidden");
     $("#privacy-consent-field").classList.toggle("hidden", state.authMode !== "signup");
-    $("#privacy-consent").required = state.authMode === "signup";
+    $("#privacy-consent").required = false;
+    $('label[for="account-password"]').textContent = state.authMode === "signup" ? "Create password" : "Password";
+    $("#account-password").autocomplete = state.authMode === "signup" ? "new-password" : "current-password";
+    $("#account-password").minLength = state.authMode === "signup" ? 12 : 1;
+    $("#account-password").placeholder = state.authMode === "signup" ? "At least 12 characters" : "Enter your password";
   }
 
   function saveSession(payload) {
