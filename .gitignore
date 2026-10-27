@@ -10,6 +10,11 @@ env/
 *.mov
 *.png
 *.jpg
+!static/ui/logo.png
+!static/ui/aureon-app-icon.png
+!android/app/src/main/res/mipmap-*/ic_launcher.png
+!android/app/src/main/res/mipmap-*/ic_launcher_round.png
+!android/app/src/main/res/drawable-nodpi/aureon_logo.png
 node_modules/
 android/.gradle/
 android/build/

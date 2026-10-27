@@ -36,6 +36,7 @@ button { cursor: pointer; }
 .topbar { position: absolute; z-index: 20; inset: 0 0 auto; height: 82px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(40px, calc((100vw - 1320px) / 2)); border-bottom: 1px solid rgba(255,255,255,.045); }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 13px; font-weight: 800; letter-spacing: .19em; }
 .brand img { filter: drop-shadow(0 0 12px rgba(194,168,255,.35)); }
+.brand img, .auth-brand img { object-fit: contain; }
 .topnav { display: flex; gap: 34px; margin-left: 75px; }
 .topnav a { font-size: 12px; color: #92929b; transition: color .2s; }
 .topnav a:hover, .topnav a.active { color: var(--text); }
