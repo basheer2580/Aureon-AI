@@ -115,6 +115,7 @@
   function switchAuthMode(mode) {
     state.authMode = mode;
     state.authStep = "credentials";
+    state.pendingIdentifier = "";
     $("#auth-title").innerHTML = mode === "signup" ? "Start with<br><span>Aureon.</span>" : "Welcome to<br><span>Aureon.</span>";
     $("#auth-subtitle").textContent = "Sign in or create an account to continue.";
     $("#auth-submit").textContent = mode === "signup" ? "Create account" : "Continue";

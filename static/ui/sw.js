@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "aureon-shell-v15";
+const CACHE_NAME = "aureon-shell-v16";
 const APP_SHELL = [
   "/",
   "/app",
