@@ -374,6 +374,27 @@ async def _request_supabase_auth(
     return result
 
 
+def _signup_user(auth_result: dict[str, Any]) -> dict[str, Any]:
+    user = auth_result.get("user")
+    if not isinstance(user, dict) and auth_result.get("id"):
+        user = auth_result
+    if not isinstance(user, dict) or not user.get("id"):
+        logger.error(
+            "Supabase Auth signup returned no user (response fields=%s)",
+            sorted(auth_result.keys()),
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Supabase Auth did not return an account. Check that signups are enabled, or sign in if this account already exists.",
+        )
+    if user.get("identities") == []:
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this identifier may already exist. Try signing in instead.",
+        )
+    return user
+
+
 def _bearer_token(authorization: str | None) -> str:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Bearer access token required")
@@ -1018,9 +1039,7 @@ async def register_account(body: AccountRegistrationInput) -> dict[str, Any]:
         "signup",
         payload={kind: identifier, "password": body.password},
     )
-    user = auth_result.get("user")
-    if not isinstance(user, dict) or not user.get("id"):
-        raise HTTPException(status_code=502, detail="Authentication service did not create an account")
+    user = _signup_user(auth_result)
     try:
         user_id = str(uuid.UUID(user["id"]))
     except (ValueError, TypeError) as exc:
