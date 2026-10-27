@@ -1141,7 +1141,21 @@ async def login_account(body: AccountLoginInput) -> dict[str, Any]:
     access_token = result.get("access_token")
     if not isinstance(access_token, str) or not access_token:
         raise HTTPException(status_code=401, detail="Invalid account identifier or password")
-    user_id, profile = await _require_active_account(access_token)
+    user = await _authenticated_user(access_token)
+    if not _user_has_verified_identifier(user):
+        raise HTTPException(status_code=403, detail="Verify your email or mobile number before continuing")
+    user_id = str(uuid.UUID(user["id"]))
+    profile = await _get_account_profile(user_id)
+    if not profile or not profile.get("password_initialized"):
+        plan = await _standard_plan()
+        await _ensure_account_profile(
+            user_id,
+            password_initialized=True,
+            registration_credits=plan["registration_credits"],
+        )
+        profile = await _get_account_profile(user_id)
+    if not profile or not profile.get("password_initialized"):
+        raise HTTPException(status_code=503, detail="Account profile could not be initialized")
     return {
         "access_token": access_token,
         "refresh_token": result.get("refresh_token"),
