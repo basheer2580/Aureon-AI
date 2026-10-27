@@ -520,9 +520,10 @@
   }
 
   async function loadModels() {
+    const select = $("#model-select");
+    select.disabled = true;
     try {
       const response = await api("/api/models");
-      const select = $("#model-select");
       select.replaceChildren();
       const models = (response.models || []).filter((model) => model.configured);
       if (!models.length) {
@@ -532,9 +533,10 @@
       models.forEach((model) => select.add(new Option(model.label, model.id)));
       const previous = localStorage.getItem("aureon_selected_model");
       if (models.some((model) => model.id === previous)) select.value = previous;
+      select.disabled = false;
       select.addEventListener("change", () => localStorage.setItem("aureon_selected_model", select.value));
     } catch (error) {
-      $("#model-select").replaceChildren(new Option("Models unavailable", "loading"));
+      select.replaceChildren(new Option("Models unavailable", "loading"));
       showToast(`Model list unavailable: ${error.message}`);
     }
   }
