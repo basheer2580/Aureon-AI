@@ -17,9 +17,12 @@ Authentication/admin secrets:
   AUREON_ADMIN_PASSWORD_HASH (hex scrypt digest),
   AUREON_ADMIN_TOKEN_SECRET (32+ chars)
   AUREON_WEBHOOK_SECRET (32+ chars)
+Optional private reporting directory:
+  AUREON_COMPLIANCE_REPORT_DIR (must be outside public asset folders)
 
 Provider image/video responses must return inline base64 in `b64_json` or
-`data[0].b64_json`. The mock domain API never registers a domain or changes DNS.
+`data[0].b64_json`. Generated media is stored privately and returned with a
+five-minute signed URL. The mock domain API never registers a domain or changes DNS.
 """
 
 from __future__ import annotations
@@ -35,10 +38,11 @@ import re
 import secrets
 import shutil
 import time
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlencode
 
 import httpx
@@ -112,19 +116,26 @@ app = FastAPI(
 )
 
 UI_DIR = Path(__file__).resolve().parent / "static" / "ui"
+DOWNLOADS_DIR = Path(__file__).resolve().parent / "static" / "downloads"
+DEFAULT_COMPLIANCE_REPORT_DIR = Path(__file__).resolve().parent / "private_compliance_reports"
+PRIVACY_POLICY_VERSION = "v1"
+ACTIVE_WEBSOCKETS: dict[str, set[WebSocket]] = {}
 app.mount("/ui", StaticFiles(directory=UI_DIR), name="ui")
+app.mount("/downloads", StaticFiles(directory=DOWNLOADS_DIR), name="downloads")
 
 
 def _cors_origins() -> list[str]:
     configured = os.getenv("AUREON_CORS_ORIGINS", "http://localhost:3000")
-    return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
+    origins.extend(["https://localhost", "capacitor://localhost"])
+    return list(dict.fromkeys(origins))
 
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -162,6 +173,7 @@ class AccountRegistrationInput(BaseModel):
     account_identifier: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=12, max_length=256)
     coupon_code: str | None = Field(default=None, max_length=128)
+    privacy_policy_accepted: bool = False
 
 
 class AccountLoginInput(BaseModel):
@@ -236,6 +248,24 @@ class DownloadTarget(BaseModel):
 
 class DownloadCatalogInput(BaseModel):
     downloads: list[DownloadTarget] = Field(max_length=12)
+
+
+class BreachAlertInput(BaseModel):
+    summary: str = Field(min_length=1, max_length=4000)
+    detected_at: datetime | None = None
+    data_categories: list[
+        Literal[
+            "account_identifiers",
+            "session_timestamps",
+            "project_code_assets",
+            "media_render_logs",
+            "chat_history",
+            "credentials",
+            "other",
+        ]
+    ] = Field(min_length=1, max_length=7)
+    affected_user_count: int | None = Field(default=None, ge=0, le=1_000_000_000)
+    containment_actions: str = Field(min_length=1, max_length=4000)
 
 
 def _required_env(name: str) -> str:
@@ -430,6 +460,110 @@ async def _supabase_request(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Persistent storage returned an invalid response",
         ) from exc
+
+
+async def _supabase_storage_request(method: str, resource: str, payload: Any) -> Any:
+    service_key = _supabase_service_key()
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=SUPABASE_TIMEOUT_SECONDS) as client:
+            response = await client.request(
+                method,
+                f"{_supabase_url()}/storage/v1/{resource}",
+                json=payload,
+                headers=headers,
+            )
+    except httpx.HTTPError as exc:
+        logger.exception("Supabase Storage request failed")
+        raise HTTPException(status_code=503, detail="Media storage is unavailable") from exc
+    if response.status_code >= 400:
+        logger.error("Supabase Storage returned HTTP %s for %s", response.status_code, resource)
+        raise HTTPException(status_code=503, detail="Media storage request failed")
+    if not response.content:
+        return None
+    try:
+        return response.json()
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=502, detail="Media storage returned an invalid response") from exc
+
+
+async def _list_user_media_paths(user_id: str) -> list[str]:
+    root = f"{user_id}/"
+    prefixes = [root]
+    paths: list[str] = []
+    while prefixes:
+        prefix = prefixes.pop()
+        offset = 0
+        while True:
+            rows = await _supabase_storage_request(
+                "POST",
+                "object/list/aureon-media",
+                {"prefix": prefix, "limit": 1000, "offset": offset},
+            )
+            if not isinstance(rows, list):
+                raise HTTPException(status_code=502, detail="Media storage returned an invalid listing")
+            for item in rows:
+                if not isinstance(item, dict) or not isinstance(item.get("name"), str):
+                    raise HTTPException(status_code=502, detail="Media storage returned an invalid listing")
+                name = item["name"]
+                path = f"{prefix}{name}"
+                relative = PurePosixPath(path)
+                if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != user_id:
+                    raise HTTPException(status_code=502, detail="Media storage returned an unsafe path")
+                if item.get("id") is None:
+                    prefixes.append(f"{path.rstrip('/')}/")
+                else:
+                    paths.append(path)
+            if len(rows) < 1000:
+                break
+            offset += len(rows)
+    return paths
+
+
+async def _delete_user_media(user_id: str) -> None:
+    paths = await _list_user_media_paths(user_id)
+    for start in range(0, len(paths), 1000):
+        await _supabase_storage_request(
+            "DELETE",
+            "object/aureon-media",
+            {"prefixes": paths[start : start + 1000]},
+        )
+
+
+async def _delete_supabase_auth_user(user_id: str) -> None:
+    service_key = _supabase_service_key()
+    try:
+        async with httpx.AsyncClient(timeout=SUPABASE_TIMEOUT_SECONDS) as client:
+            response = await client.delete(
+                f"{_supabase_url()}/auth/v1/admin/users/{user_id}",
+                headers={
+                    "apikey": service_key,
+                    "Authorization": f"Bearer {service_key}",
+                },
+            )
+    except httpx.HTTPError as exc:
+        logger.exception("Supabase Auth account deletion failed")
+        raise HTTPException(status_code=503, detail="Account deletion service is unavailable") from exc
+    if response.status_code not in (200, 204):
+        logger.error("Supabase Auth account deletion returned HTTP %s", response.status_code)
+        raise HTTPException(status_code=503, detail="Account deletion could not be completed")
+
+
+def _delete_user_site_files(user_id: str) -> None:
+    sites_root = SITES_DIR.resolve()
+    user_root = SITES_DIR / user_id
+    if user_root.is_symlink() or user_root.parent.resolve() != sites_root:
+        raise HTTPException(status_code=500, detail="User project directory is not safely contained")
+    if user_root.exists():
+        try:
+            shutil.rmtree(user_root)
+        except OSError as exc:
+            logger.exception("Could not remove published sites for account %s", user_id)
+            raise HTTPException(status_code=500, detail="Published project files could not be removed") from exc
 
 
 def _model_routes() -> dict[str, dict[str, str]]:
@@ -759,16 +893,10 @@ def _normalize_account_identifier(identifier: str) -> tuple[str, str]:
 
 
 def _validate_password_strength(password: str) -> None:
-    if (
-        len(password) < 12
-        or not re.search(r"[a-z]", password)
-        or not re.search(r"[A-Z]", password)
-        or not re.search(r"[0-9]", password)
-        or not re.search(r"[^A-Za-z0-9]", password)
-    ):
+    if len(password) < 12:
         raise HTTPException(
             status_code=422,
-            detail="Password must be at least 12 characters and include uppercase, lowercase, number, and symbol",
+            detail="Password must be at least 12 characters",
         )
 
 
@@ -790,17 +918,26 @@ async def _ensure_account_profile(
     *,
     password_initialized: bool,
     registration_credits: int,
+    privacy_policy_accepted_at: str | None = None,
 ) -> None:
+    profile = {
+        "user_id": user_id,
+        "password_initialized": password_initialized,
+        "is_premium_whitelisted": False,
+        "credit_balance": registration_credits,
+    }
+    if privacy_policy_accepted_at:
+        profile.update(
+            {
+                "privacy_policy_accepted_at": privacy_policy_accepted_at,
+                "privacy_policy_version": PRIVACY_POLICY_VERSION,
+            }
+        )
     await _supabase_request(
         "POST",
         "account_profiles",
         params={"on_conflict": "user_id"},
-        payload={
-            "user_id": user_id,
-            "password_initialized": password_initialized,
-            "is_premium_whitelisted": False,
-            "credit_balance": registration_credits,
-        },
+        payload=profile,
         prefer="resolution=ignore-duplicates,return=minimal",
     )
     if password_initialized:
@@ -867,6 +1004,11 @@ async def _redeem_pending_coupon(user_id: str) -> bool:
 
 @app.post("/api/auth/register", status_code=201)
 async def register_account(body: AccountRegistrationInput) -> dict[str, Any]:
+    if not body.privacy_policy_accepted:
+        raise HTTPException(
+            status_code=400,
+            detail="You must accept the privacy framework to register an account.",
+        )
     kind, identifier = _normalize_account_identifier(body.account_identifier)
     _validate_password_strength(body.password)
     coupon_digest = None
@@ -891,6 +1033,7 @@ async def register_account(body: AccountRegistrationInput) -> dict[str, Any]:
         user_id,
         password_initialized=True,
         registration_credits=plan["registration_credits"],
+        privacy_policy_accepted_at=_now_iso(),
     )
     if coupon_digest:
         await _supabase_request(
@@ -914,7 +1057,14 @@ async def register_account(body: AccountRegistrationInput) -> dict[str, Any]:
 
 
 @app.get("/api/auth/github")
-async def github_oauth() -> RedirectResponse:
+async def github_oauth(
+    privacy_policy_accepted: bool = Query(default=False),
+) -> RedirectResponse:
+    if not privacy_policy_accepted:
+        raise HTTPException(
+            status_code=400,
+            detail="You must accept the privacy framework to register an account.",
+        )
     redirect_uri = f"{PUBLIC_BASE_URL}/app" if PUBLIC_BASE_URL else ""
     if not redirect_uri:
         raise HTTPException(status_code=503, detail="Set AUREON_PUBLIC_BASE_URL before enabling GitHub sign-in")
@@ -1011,6 +1161,24 @@ async def initialize_oauth_password(
     return {"user_id": user_id, "password_initialized": True}
 
 
+@app.delete("/api/user/delete-account")
+async def delete_account(user_id: str = Depends(current_user_id)) -> dict[str, str]:
+    _delete_user_site_files(user_id)
+    await _delete_user_media(user_id)
+    await _delete_supabase_auth_user(user_id)
+    connections = tuple(ACTIVE_WEBSOCKETS.pop(user_id, set()))
+    for connection in connections:
+        try:
+            await connection.close(code=4403, reason="Account deleted")
+        except (RuntimeError, WebSocketDisconnect):
+            logger.info("A websocket for deleted account %s was already closed", user_id)
+    return {
+        "status": "deleted",
+        "message": "Account and associated profile, history, domain, and usage records were deleted.",
+        "cache_cleanup": "No Redis or external session cache is configured.",
+    }
+
+
 @app.get("/api/account/metrics")
 async def account_metrics(
     user_id: str = Depends(current_user_id),
@@ -1025,6 +1193,24 @@ async def account_metrics(
     if not profile:
         raise HTTPException(status_code=404, detail="Account profile not found")
     return {"plan": plan, "account": profile}
+
+
+@app.post("/api/account/privacy-consent", status_code=204)
+async def record_privacy_consent(
+    user_id: str = Depends(current_user_id),
+) -> None:
+    rows = await _supabase_request(
+        "PATCH",
+        "account_profiles",
+        params={"user_id": f"eq.{user_id}"},
+        payload={
+            "privacy_policy_accepted_at": _now_iso(),
+            "privacy_policy_version": PRIVACY_POLICY_VERSION,
+        },
+        prefer="return=representation",
+    )
+    if not isinstance(rows, list) or not rows:
+        raise HTTPException(status_code=404, detail="Account profile not found")
 
 
 @app.post("/api/credits/deduct-task")
@@ -1327,6 +1513,102 @@ async def payments_webhook(
     }
 
 
+@app.post("/api/admin/breach-alert", status_code=201)
+async def create_breach_alert(
+    body: BreachAlertInput,
+    admin_username: str = Depends(require_admin),
+) -> dict[str, Any]:
+    detected_at = body.detected_at or datetime.now(timezone.utc)
+    if detected_at.tzinfo is None:
+        detected_at = detected_at.replace(tzinfo=timezone.utc)
+    incident_id = str(uuid.uuid4())
+    report = "\n".join(
+        [
+            "AUREON SECURITY INCIDENT REPORT — DRAFT",
+            f"Incident ID: {incident_id}",
+            f"Prepared at (UTC): {_now_iso()}",
+            f"Detected at: {detected_at.astimezone(timezone.utc).isoformat()}",
+            f"Reported by: {admin_username}",
+            f"Affected user count: {body.affected_user_count if body.affected_user_count is not None else 'Not yet determined'}",
+            f"Data categories: {', '.join(body.data_categories)}",
+            "",
+            "Incident summary:",
+            body.summary.strip(),
+            "",
+            "Containment actions:",
+            body.containment_actions.strip(),
+            "",
+            "Distribution: Internal draft only. Confirm applicable jurisdiction, recipient, facts, and legal reporting deadlines before external submission.",
+        ]
+    )
+    report_dir = Path(
+        os.getenv("AUREON_COMPLIANCE_REPORT_DIR", str(DEFAULT_COMPLIANCE_REPORT_DIR))
+    ).expanduser().resolve()
+    public_roots = (UI_DIR.resolve(), DOWNLOADS_DIR.resolve(), SITES_DIR.resolve())
+    if any(report_dir == root or root in report_dir.parents for root in public_roots):
+        raise HTTPException(status_code=503, detail="Compliance report directory must be outside public asset folders")
+    report_path = report_dir / f"breach-{incident_id}.txt"
+    temporary_path: Path | None = None
+    try:
+        report_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=report_dir,
+            prefix=f".breach-{incident_id}-",
+            suffix=".tmp",
+            delete=False,
+        ) as report_file:
+            temporary_path = Path(report_file.name)
+            report_file.write(report)
+            report_file.flush()
+            os.fsync(report_file.fileno())
+        os.replace(temporary_path, report_path)
+    except OSError as exc:
+        logger.exception("Could not write private breach report")
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                logger.exception("Could not remove temporary breach report")
+        raise HTTPException(status_code=500, detail="Could not create the private breach report") from exc
+
+    try:
+        await _supabase_request(
+            "POST",
+            "security_incidents",
+            payload={
+                "id": incident_id,
+                "created_by": admin_username,
+                "detected_at": detected_at.astimezone(timezone.utc).isoformat(),
+                "summary": body.summary.strip(),
+                "data_categories": body.data_categories,
+                "affected_user_count": body.affected_user_count,
+                "containment_actions": body.containment_actions.strip(),
+                "report_path": str(report_path),
+            },
+            prefer="return=minimal",
+        )
+    except HTTPException:
+        try:
+            report_path.unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Could not remove unrecorded private breach report %s", report_path.name)
+        raise
+    return {
+        "incident_id": incident_id,
+        "status": "recorded",
+        "report": report,
+        "report_file": report_path.name,
+        "external_notifications_sent": False,
+        "notice": (
+            "This endpoint records an internal draft only. It does not mass-email users or submit "
+            "a notice to a regulator; configure an approved notification provider and verify the "
+            "applicable jurisdiction and recipient before external dispatch."
+        ),
+    }
+
+
 @app.websocket("/ws/chat/{session_id}")
 async def chat_socket(websocket: WebSocket, session_id: str) -> None:
     await websocket.accept()
@@ -1348,6 +1630,8 @@ async def chat_socket(websocket: WebSocket, session_id: str) -> None:
         )
         return
 
+    user_connections = ACTIVE_WEBSOCKETS.setdefault(user_id, set())
+    user_connections.add(websocket)
     try:
         while True:
             try:
@@ -1433,6 +1717,10 @@ async def chat_socket(websocket: WebSocket, session_id: str) -> None:
                 raise
     except WebSocketDisconnect:
         return
+    finally:
+        user_connections.discard(websocket)
+        if not user_connections:
+            ACTIVE_WEBSOCKETS.pop(user_id, None)
 
 
 @app.get("/api/history")
@@ -1717,8 +2005,20 @@ async def _generate_and_upload_media(
     if upload.status_code >= 400:
         logger.error("Supabase Storage returned HTTP %s", upload.status_code)
         raise HTTPException(status_code=503, detail="Media upload failed")
-    public_url = f"{_supabase_url()}/storage/v1/object/public/aureon-media/{object_path}"
-    return {"url": public_url, "content_type": content_type}
+    signed_result = await _supabase_storage_request(
+        "POST",
+        f"object/sign/aureon-media/{object_path}",
+        {"expiresIn": 300},
+    )
+    signed_path = signed_result.get("signedURL") if isinstance(signed_result, dict) else None
+    if not isinstance(signed_path, str) or not signed_path.startswith("/"):
+        raise HTTPException(status_code=502, detail="Media storage returned an invalid signed URL")
+    signed_url = (
+        f"{_supabase_url()}{signed_path}"
+        if signed_path.startswith("/storage/v1/")
+        else f"{_supabase_url()}/storage/v1{signed_path}"
+    )
+    return {"url": signed_url, "content_type": content_type}
 
 
 @app.post("/api/generate-image")

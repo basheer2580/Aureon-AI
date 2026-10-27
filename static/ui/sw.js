@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "aureon-shell-v4";
+const CACHE_NAME = "aureon-shell-v10";
 const APP_SHELL = [
   "/",
   "/app",
@@ -8,6 +8,7 @@ const APP_SHELL = [
   "/manifest.webmanifest",
   "/ui/styles.css",
   "/ui/app.js",
+  "/ui/runtime-config.js",
   "/ui/aureon-mark.svg",
 ];
 

@@ -1,0 +1,19 @@
+{
+  "name": "aureon-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aureon native Android app shell built with Capacitor",
+  "scripts": {
+    "native:configure": "node scripts/configure-native.mjs",
+    "native:sync:android": "npx cap sync android",
+    "native:prepare:android": "npm run native:configure && npm run native:sync:android",
+    "native:open:android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}

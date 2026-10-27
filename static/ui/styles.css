@@ -104,6 +104,8 @@ button { cursor: pointer; }
 .download-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; min-height: 185px; }
 .download-card { position: relative; min-height: 184px; padding: 21px 19px 17px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(145deg, rgba(24,25,32,.92), rgba(13,14,18,.92)); transition: border-color .2s, transform .2s, background .2s; }
 .download-card:hover { transform: translateY(-3px); border-color: rgba(203,183,255,.34); background: #17161d; }
+.download-card-pending { opacity: .7; cursor: not-allowed; }
+.download-card-pending:hover { transform: none; border-color: var(--line); background: linear-gradient(145deg, rgba(24,25,32,.92), rgba(13,14,18,.92)); }
 .platform-icon { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 8px; color: #c9b3f3; font-size: 17px; }
 .platform-version { position: absolute; right: 15px; top: 25px; color: #77737e; font-family: var(--mono); font-size: 8px; }
 .download-card h3 { margin: 24px 0 5px; font-size: 13px; font-weight: 500; }
@@ -189,6 +191,8 @@ button { cursor: pointer; }
 .profile-menu-pop { position: absolute; right: 0; bottom: 43px; left: 0; padding: 5px; border: 1px solid var(--line-strong); border-radius: 6px; background: #1a1b21; box-shadow: 0 12px 25px #0008; }
 .profile-menu-pop button { width: 100%; padding: 9px; border: 0; border-radius: 4px; color: #ddd; background: transparent; text-align: left; font-size: 10px; }
 .profile-menu-pop button:hover { background: rgba(255,255,255,.07); }
+.profile-menu-pop #delete-account-button { color: #e6a5a5; }
+.profile-menu-pop #delete-account-button:hover { color: #ffd2d2; background: rgba(131,45,45,.18); }
 .chat-workspace { position: relative; min-width: 0; height: 100vh; display: flex; flex-direction: column; }
 .workspace-topbar { height: 58px; flex: 0 0 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 23px; border-bottom: 1px solid rgba(255,255,255,.045); }
 .model-control { position: relative; display: flex; align-items: center; gap: 9px; }
@@ -291,6 +295,10 @@ button { cursor: pointer; }
 .auth-form { display: flex; flex-direction: column; }
 .form-label { margin: 11px 0 7px; color: #aaa6b0; font-size: 10px; }
 .form-label span { color: #77727e; }
+.privacy-consent { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 15px; color: #b7b2be; font-size: 10px; }
+.privacy-consent input { width: 14px; min-height: 14px; accent-color: #cbb7ff; }
+.privacy-consent label { cursor: pointer; }
+.privacy-consent button { padding: 0; border: 0; color: #cbb7ff; background: transparent; font-size: 10px; text-decoration: underline; }
 .auth-form input, .auth-form textarea { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: 5px; outline: 0; color: #e1dde6; background: rgba(7,8,11,.45); font-size: 10px; }
 .auth-form textarea { height: auto; padding: 10px; resize: vertical; font-family: var(--mono); }
 .auth-form input:focus, .auth-form textarea:focus { border-color: rgba(207,183,247,.44); }
@@ -307,7 +315,23 @@ button { cursor: pointer; }
 .admin-card { width: min(500px,100%); }
 .admin-card h2 { margin-bottom: 24px; }
 .admin-card h2 span { color: #b99ee6; }
+.privacy-card { width: min(520px, 100%); }
+.privacy-card h2 { margin-bottom: 15px; }
+.privacy-card h2 span { color: #b99ee6; }
+.privacy-copy { max-height: min(48vh, 360px); overflow-y: auto; color: #aaa6b0; font-size: 11px; line-height: 1.75; }
+.privacy-copy p { margin: 0 0 12px; }
 .cms-actions { display: flex; gap: 8px; margin-top: 17px; }
+.app-page.admin-mode .sidebar,
+.app-page.admin-mode .chat-workspace,
+.app-page.admin-mode .canvas-panel { display: none; }
+.admin-folio.modal-backdrop { align-items: stretch; padding: 20px; }
+.admin-folio .admin-card { width: min(1040px,100%); min-height: min(780px,calc(100vh - 40px)); overflow-y: auto; margin: auto; padding: 38px; }
+.admin-folio #admin-content-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 18px; }
+.admin-folio #admin-content-form > #cms-downloads,
+.admin-folio #admin-content-form > label[for="cms-downloads"],
+.admin-folio #admin-content-form > .auth-error,
+.admin-folio #admin-content-form > .cms-actions { grid-column: 1/-1; }
+.admin-folio #admin-content-form .form-label { align-self: end; }
 .toast { position: fixed; z-index: 150; right: 24px; bottom: 24px; max-width: min(400px, calc(100% - 48px)); padding: 12px 16px; border: 1px solid var(--line-strong); border-radius: 7px; color: #e0dbe7; background: #202027; box-shadow: 0 15px 35px #0008; font-size: 10px; line-height: 1.5; }
 
 @keyframes pulse { 50% { opacity: .35; } }
@@ -386,6 +410,13 @@ button { cursor: pointer; }
   .composer-foot { font-size: 7px; }
   .local-file-note { max-width: 55%; }
   .auth-card { padding: 29px 24px 23px; }
+  .admin-folio.modal-backdrop { padding: 0; }
+  .admin-folio .admin-card { width: 100%; min-height: 100vh; padding: 29px 20px; border-radius: 0; }
+  .admin-folio #admin-content-form { grid-template-columns: 1fr; }
+  .admin-folio #admin-content-form > #cms-downloads,
+  .admin-folio #admin-content-form > label[for="cms-downloads"],
+  .admin-folio #admin-content-form > .auth-error,
+  .admin-folio #admin-content-form > .cms-actions { grid-column: auto; }
 }
 @media (max-width: 390px) {
   .topbar { padding-inline: 13px; }

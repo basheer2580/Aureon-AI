@@ -44,6 +44,8 @@ create table if not exists public.account_profiles (
     is_premium_whitelisted boolean not null default false,
     active boolean not null default true,
     credit_balance bigint not null default 5000 check (credit_balance >= 0),
+    privacy_policy_accepted_at timestamptz,
+    privacy_policy_version text,
     last_daily_renewal date,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -51,6 +53,10 @@ create table if not exists public.account_profiles (
 
 alter table public.account_profiles
     add column if not exists active boolean not null default true;
+alter table public.account_profiles
+    add column if not exists privacy_policy_accepted_at timestamptz;
+alter table public.account_profiles
+    add column if not exists privacy_policy_version text;
 
 create table if not exists public.daily_usage_trackers (
     user_id uuid primary key references auth.users(id) on delete cascade,
@@ -108,6 +114,18 @@ create table if not exists public.admin_login_attempts (
     locked_until timestamptz
 );
 
+create table if not exists public.security_incidents (
+    id uuid primary key default gen_random_uuid(),
+    created_by text not null,
+    detected_at timestamptz not null,
+    summary text not null,
+    data_categories text[] not null,
+    affected_user_count bigint check (affected_user_count is null or affected_user_count >= 0),
+    containment_actions text not null,
+    report_path text not null,
+    created_at timestamptz not null default now()
+);
+
 create index if not exists domain_claims_active_user_idx
     on public.domain_claims (user_id, active);
 
@@ -120,6 +138,7 @@ alter table public.system_config enable row level security;
 alter table public.premium_coupons enable row level security;
 alter table public.pending_coupon_redemptions enable row level security;
 alter table public.admin_login_attempts enable row level security;
+alter table public.security_incidents enable row level security;
 
 create or replace function public.redeem_premium_coupon(
     p_user_id uuid,
@@ -458,5 +477,5 @@ grant execute on function public.record_admin_login(text, boolean) to service_ro
 grant execute on function public.run_daily_maintenance() to service_role;
 
 insert into storage.buckets (id, name, public)
-values ('aureon-media', 'aureon-media', true)
+values ('aureon-media', 'aureon-media', false)
 on conflict (id) do update set public = excluded.public;

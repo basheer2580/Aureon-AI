@@ -1,0 +1,9 @@
+{
+  "appId": "ai.aureon.mobile",
+  "appName": "Aureon",
+  "webDir": "native-web",
+  "backgroundColor": "#090a0d",
+  "android": {
+    "backgroundColor": "#090a0d"
+  }
+}

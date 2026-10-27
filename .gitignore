@@ -10,3 +10,10 @@ env/
 *.mov
 *.png
 *.jpg
+node_modules/
+android/.gradle/
+android/build/
+android/app/build/
+native-web/
+static/downloads/*.apk
+static/downloads/*.aab

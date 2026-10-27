@@ -3,11 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#090a0d">
   <meta name="description" content="Aureon — Intelligence, Beyond Limits. One considered workspace for your ideas, agents, and creations.">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/ui/aureon-mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/ui/styles.css?v=4">
+  <link rel="stylesheet" href="/ui/styles.css?v=5">
   <title>Aureon — Intelligence, Beyond Limits</title>
 </head>
 <body>
@@ -132,7 +135,7 @@
           <span class="profile-copy"><strong id="profile-name">Your account</strong><small id="profile-plan">Personal workspace</small></span>
           <span class="profile-menu">···</span>
         </button>
-        <div class="profile-menu-pop hidden" id="profile-menu"><button type="button" id="logout-button">Sign out</button></div>
+        <div class="profile-menu-pop hidden" id="profile-menu"><button type="button" id="delete-account-button">Delete My Account</button><button type="button" id="logout-button">Sign out</button></div>
       </div>
     </aside>
 
@@ -213,8 +216,13 @@
         <label class="form-label" for="account-identifier">Email or mobile number</label>
         <input id="account-identifier" name="account_identifier" type="text" autocomplete="username" placeholder="you@example.com or +14155552671" required>
         <label class="form-label" for="account-password">Password</label>
-        <input id="account-password" name="password" type="password" autocomplete="current-password" placeholder="At least 12 characters" required>
+        <input id="account-password" name="password" type="password" autocomplete="current-password" minlength="1" placeholder="Enter your password" required>
         <div id="coupon-field" class="hidden"><label class="form-label" for="coupon-code">Premium Access Coupon Code <span>(Optional)</span></label><input id="coupon-code" name="coupon_code" type="text" autocomplete="off" placeholder="Enter your coupon code"></div>
+        <div id="privacy-consent-field" class="privacy-consent hidden">
+          <input id="privacy-consent" name="privacy_policy_accepted" type="checkbox" required>
+          <label for="privacy-consent">I agree to the Privacy Policy</label>
+          <button type="button" id="privacy-policy-open">Read policy</button>
+        </div>
         <div class="verification-field hidden" id="verification-field"><label class="form-label" for="verification-code">Verification code</label><input id="verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter the code sent to you"></div>
         <div class="auth-error hidden" id="auth-error" role="alert"></div>
         <button class="button button-primary auth-submit" type="submit" id="auth-submit">Continue</button>
@@ -225,11 +233,26 @@
     </section>
   </div>
 
+  <div class="modal-backdrop hidden" id="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+    <section class="auth-card privacy-card">
+      <button class="modal-close" id="privacy-close" type="button" aria-label="Close privacy policy">×</button>
+      <div class="section-kicker">AUREON / PRIVACY FRAMEWORK</div>
+      <h2 id="privacy-title">Your work stays yours<span>.</span></h2>
+      <div class="privacy-copy">
+        <p>Aureon collects account identifiers (verified email address or mobile number), session access timestamps, project code assets, and media-render usage statistics.</p>
+        <p>This information is used to operate accounts, manage credits, provide requested features, and isolate each account's workspace. Aureon does not sell this information or use it for advertising. Supabase and the model or media provider selected for a request process the data needed to deliver those features; prompts may be sent to that selected provider.</p>
+        <p>Generated media is held in private storage and served using temporary links. When you choose to publish a website, its published code is accessible at its public site path; do not publish confidential material.</p>
+        <p>Account data is retained while needed to provide the service. You can request account closure from your workspace profile menu; deletion removes the account and associated records and assets, subject to any legally required retention.</p>
+      </div>
+      <button class="button button-primary auth-submit" id="privacy-accept-close" type="button">Return to account creation</button>
+    </section>
+  </div>
+
   <div class="modal-backdrop hidden" id="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-title">
     <section class="auth-card admin-card">
       <button class="modal-close" data-close-modal type="button" aria-label="Close">×</button>
       <div class="section-kicker">RESTRICTED / ADMIN</div>
-      <h2 id="admin-title">Site settings<span>.</span></h2>
+      <h2 id="admin-title">Admin Folio<span>.</span></h2>
       <form id="admin-login-form" class="auth-form">
         <label class="form-label" for="admin-username">Administrator username</label><input id="admin-username" autocomplete="username" required>
         <label class="form-label" for="admin-password">Password</label><input id="admin-password" type="password" autocomplete="current-password" required>
@@ -248,6 +271,7 @@
     </section>
   </div>
   <div class="toast hidden" id="toast" role="status"></div>
-  <script src="/ui/app.js?v=4" defer></script>
+  <script src="/ui/runtime-config.js"></script>
+  <script src="/ui/app.js?v=9" defer></script>
 </body>
 </html>

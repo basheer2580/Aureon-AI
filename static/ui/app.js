@@ -6,9 +6,14 @@
   const USER_KEY = "aureon_user_id";
   const PREMIUM_KEY = "aureon_premium";
   const ADMIN_KEY = "aureon_admin_token";
+  const OAUTH_CONSENT_KEY = "aureon_oauth_privacy_consent_pending";
+  const ADMIN_IDENTIFIER = "admin@aureon.ai";
   const MAX_FILES = 15;
+  const API_BASE_URL = String(window.AUREON_CONFIG?.apiBaseUrl || "").replace(/\/+$/, "");
+  const IS_NATIVE_APP = Boolean(window.Capacitor?.isNativePlatform?.());
   const $ = (selector, parent = document) => parent.querySelector(selector);
   const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
+  const apiUrl = (path) => API_BASE_URL ? `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}` : path;
 
   const state = {
     token: localStorage.getItem(TOKEN_KEY) || "",
@@ -29,7 +34,7 @@
     activeTab: "preview",
   };
 
-  const onAppRoute = location.pathname === "/app" || location.pathname.startsWith("/app/");
+  const onAppRoute = IS_NATIVE_APP || location.pathname === "/app" || location.pathname.startsWith("/app/");
   const landing = $("#landing-page");
   const appPage = $("#app-page");
   const footer = $("#site-footer");
@@ -60,12 +65,15 @@
   }
 
   async function api(path, options = {}) {
+    if (IS_NATIVE_APP && !API_BASE_URL) {
+      throw new Error("This native build has no Aureon API URL configured. Publish a native build with AUREON_API_BASE_URL set.");
+    }
     const headers = new Headers(options.headers || {});
     if (state.token) headers.set("Authorization", `Bearer ${state.token}`);
     if (options.body && !(options.body instanceof FormData)) {
       headers.set("Content-Type", "application/json");
     }
-    const response = await fetch(path, { ...options, headers });
+    const response = await fetch(apiUrl(path), { ...options, headers });
     const type = response.headers.get("content-type") || "";
     let payload = null;
     if (type.includes("application/json")) {
@@ -96,7 +104,13 @@
     $("#auth-title").innerHTML = mode === "signup" ? "Start with<br><span>Aureon.</span>" : "Welcome to<br><span>Aureon.</span>";
     $("#auth-submit").textContent = mode === "signup" ? "Create account" : "Continue";
     $("#account-password").autocomplete = mode === "signup" ? "new-password" : "current-password";
+    $("#account-password").minLength = mode === "signup" ? 12 : 1;
+    $("#account-password").placeholder = mode === "signup" ? "At least 12 characters" : "Enter your password";
     $("#coupon-field").classList.toggle("hidden", mode !== "signup");
+    const privacyConsent = $("#privacy-consent");
+    $("#privacy-consent-field").classList.toggle("hidden", mode !== "signup");
+    privacyConsent.required = mode === "signup";
+    if (mode !== "signup") privacyConsent.checked = false;
     $("#verification-field").classList.add("hidden");
     $("#account-identifier").disabled = false;
     $("#account-password").disabled = false;
@@ -112,6 +126,8 @@
     $("#coupon-field").classList.add("hidden");
     $("#account-identifier").disabled = true;
     $("#auth-submit").textContent = "Verify account";
+    $("#privacy-consent-field").classList.add("hidden");
+    $("#privacy-consent").required = false;
     setError($("#auth-error"), "Enter the verification code sent to your email or mobile number.");
     $("#verification-code").focus();
   }
@@ -125,7 +141,11 @@
     $("#account-password").disabled = false;
     $("#account-password").value = "";
     $("#account-password").autocomplete = "new-password";
+    $("#account-password").minLength = 12;
+    $("#account-password").placeholder = "At least 12 characters";
     $("#coupon-field").classList.add("hidden");
+    $("#privacy-consent-field").classList.add("hidden");
+    $("#privacy-consent").required = false;
     $("#verification-field").classList.add("hidden");
     $("#auth-submit").textContent = "Set password & continue";
     setError($("#auth-error"), "Your verified GitHub account needs a private Aureon password before workspace access.");
@@ -140,6 +160,8 @@
     $("#account-password").value = "";
     $("#verification-code").value = "";
     $("#verification-field").classList.add("hidden");
+    $("#privacy-consent-field").classList.toggle("hidden", state.authMode !== "signup");
+    $("#privacy-consent").required = state.authMode === "signup";
   }
 
   function saveSession(payload) {
@@ -154,7 +176,7 @@
     localStorage.setItem(PREMIUM_KEY, String(state.premium));
   }
 
-  function clearSession() {
+  function clearSession(message = "You have been signed out.") {
     if (state.socket) {
       state.socket.onclose = null;
       state.socket.close();
@@ -168,7 +190,7 @@
     state.adminToken = "";
     state.attachments = [];
     if (onAppRoute) authModal(true);
-    showToast("You have been signed out.");
+    showToast(message);
   }
 
   function consumeOAuthCallback() {
@@ -189,6 +211,7 @@
   async function finishOAuthSignIn() {
     try {
       const metrics = await api("/api/account/metrics");
+      await persistPendingOAuthConsent();
       state.userId = metrics.account.user_id;
       state.premium = Boolean(metrics.account.is_premium_whitelisted);
       localStorage.setItem(USER_KEY, state.userId);
@@ -203,6 +226,12 @@
       authModal(true);
       setError($("#auth-error"), error.message);
     }
+  }
+
+  async function persistPendingOAuthConsent() {
+    if (sessionStorage.getItem(OAUTH_CONSENT_KEY) !== "true") return;
+    await api("/api/account/privacy-consent", { method: "POST" });
+    sessionStorage.removeItem(OAUTH_CONSENT_KEY);
   }
 
   function escapeHTML(value) {
@@ -314,9 +343,12 @@
   }
 
   function websocketUrl(sessionId) {
-    const scheme = location.protocol === "https:" ? "wss:" : "ws:";
     const query = new URLSearchParams({ access_token: state.token });
-    return `${scheme}//${location.host}/ws/chat/${encodeURIComponent(sessionId)}?${query}`;
+    const base = API_BASE_URL || location.origin;
+    const url = new URL(`/ws/chat/${encodeURIComponent(sessionId)}`, base);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.search = query.toString();
+    return url.toString();
   }
 
   async function sendMessage(text) {
@@ -564,13 +596,14 @@
       showToast("Only Aureon-published paths can be previewed here.");
       return;
     }
-    $("#preview-url").value = `${location.origin}${path}`;
+    const base = API_BASE_URL || location.origin;
+    $("#preview-url").value = `${base}${path}`;
     $("#preview-frame").replaceChildren();
     const iframe = document.createElement("iframe");
     iframe.title = "Published Aureon website preview";
     iframe.sandbox = "allow-scripts allow-forms allow-popups";
     iframe.referrerPolicy = "no-referrer";
-    iframe.src = path;
+    iframe.src = apiUrl(path);
     $("#preview-frame").append(iframe);
   }
 
@@ -591,8 +624,8 @@
   async function loadLandingContent() {
     try {
       const [downloadsResponse, configResponse] = await Promise.all([
-        fetch("/api/downloads").then((response) => response.ok ? response.json() : Promise.reject(new Error("Download catalog unavailable"))),
-        fetch("/api/public/landing").then((response) => response.ok ? response.json() : Promise.reject(new Error("Landing content unavailable"))),
+        fetch(apiUrl("/api/downloads")).then((response) => response.ok ? response.json() : Promise.reject(new Error("Download catalog unavailable"))),
+        fetch(apiUrl("/api/public/landing")).then((response) => response.ok ? response.json() : Promise.reject(new Error("Landing content unavailable"))),
       ]);
       state.downloads = downloadsResponse.downloads || [];
       state.landingText = configResponse.landing_text || {};
@@ -616,13 +649,12 @@
     });
     if (!validDownloads.length) {
       grid.innerHTML = '<div class="download-empty"><span>✳</span> New Aureon releases will appear here.</div>';
-      return;
     }
     const glyphs = { windows: "⊞", macos: "⌘", mac: "⌘", android: "◈", linux: "⌁", web: "◌" };
     validDownloads.forEach((release) => {
       const link = document.createElement("a");
       link.className = "download-card";
-      link.href = release.url;
+      link.href = new URL(release.url, API_BASE_URL || location.origin).href;
       link.target = release.url?.startsWith("https://") ? "_blank" : "_self";
       link.rel = "noopener noreferrer";
       link.innerHTML = `<span class="platform-icon"></span><span class="platform-version"></span><h3></h3><p></p><span class="download-cta">Get Aureon <span>↗</span></span>`;
@@ -632,6 +664,13 @@
       $("p", link).textContent = release.detail || "Official Aureon release";
       grid.append(link);
     });
+    if (!validDownloads.some((release) => release.platform.toLowerCase() === "android")) {
+      const placeholder = document.createElement("article");
+      placeholder.className = "download-card download-card-pending";
+      placeholder.setAttribute("aria-disabled", "true");
+      placeholder.innerHTML = '<span class="platform-icon">◈</span><span class="platform-version">ANDROID</span><h3>Aureon for Android</h3><p>Signed app release is being prepared.</p><span class="download-cta">APK coming soon <span>·</span></span>';
+      grid.append(placeholder);
+    }
   }
 
   function attachmentLimit() {
@@ -655,6 +694,15 @@
     event.preventDefault();
     const errorBox = $("#auth-error");
     setError(errorBox, "");
+    if (
+      state.authStep === "credentials"
+      && state.authMode === "signup"
+      && !$("#privacy-consent").checked
+    ) {
+      setError(errorBox, "You must accept the privacy framework to register an account.");
+      $("#privacy-consent").focus();
+      return;
+    }
     const identifierInput = $("#account-identifier");
     const identifier = state.pendingIdentifier || identifierInput.value.trim();
     const password = $("#account-password").value;
@@ -667,6 +715,7 @@
           body: JSON.stringify({ password }),
         });
         const profile = await api("/api/account/metrics");
+        await persistPendingOAuthConsent();
         saveSession({ access_token: state.token, user_id: profile.account.user_id, is_premium_whitelisted: profile.account.is_premium_whitelisted });
         restoreAuthForm();
         await initializeWorkspace();
@@ -701,6 +750,7 @@
             account_identifier: identifier,
             password,
             coupon_code: $("#coupon-code").value.trim() || null,
+            privacy_policy_accepted: $("#privacy-consent").checked,
           }),
         });
         if (result.verification_required) {
@@ -708,6 +758,13 @@
           return;
         }
         showVerificationStep(identifier);
+        return;
+      }
+      if (
+        state.authMode === "login"
+        && identifier.toLowerCase() === ADMIN_IDENTIFIER
+      ) {
+        await authenticateAdmin(ADMIN_IDENTIFIER, password);
         return;
       }
       const result = await api("/api/auth/login", {
@@ -718,9 +775,59 @@
       restoreAuthForm();
       await initializeWorkspace();
     } catch (error) {
-      setError(errorBox, error.message);
+      const activeErrorBox = $("#admin-modal").classList.contains("hidden")
+        ? errorBox
+        : $("#admin-error");
+      setError(activeErrorBox, error.message);
     } finally {
       submit.disabled = false;
+    }
+  }
+
+  async function deleteAccount() {
+    if (!window.confirm("Permanently delete your Aureon account, conversations, published projects, and generated media? This cannot be undone.")) {
+      return;
+    }
+    try {
+      await api("/api/user/delete-account", { method: "DELETE" });
+      clearSession("Your account and associated data have been deleted.");
+    } catch (error) {
+      showToast(`Account deletion failed: ${error.message}`, 6000);
+    }
+  }
+
+  async function authenticateAdmin(username, password) {
+    const response = await fetch(apiUrl("/api/admin/login"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.detail || "Administrator sign-in failed");
+    }
+    if (!result.access_token) {
+      throw new Error("Administrator authentication returned no access token");
+    }
+    state.adminToken = result.access_token;
+    sessionStorage.setItem(ADMIN_KEY, state.adminToken);
+    state.userId = "";
+    $("#auth-modal").classList.add("hidden");
+    $("#admin-modal").classList.remove("hidden");
+    $("#admin-modal").classList.add("admin-folio");
+    appPage.classList.add("admin-mode");
+    document.body.classList.add("modal-open");
+    $("#admin-login-form").classList.add("hidden");
+    $("#admin-content-form").classList.remove("hidden");
+    try {
+      await loadAdminEditor();
+    } catch (error) {
+      sessionStorage.removeItem(ADMIN_KEY);
+      state.adminToken = "";
+      $("#admin-content-form").classList.add("hidden");
+      $("#admin-login-form").classList.remove("hidden");
+      setError($("#admin-error"), error.message);
+      throw error;
     }
   }
 
@@ -729,23 +836,7 @@
     const errorBox = $("#admin-error");
     setError(errorBox, "");
     try {
-      const result = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: $("#admin-username").value,
-          password: $("#admin-password").value,
-        }),
-      }).then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.detail || "Admin login failed");
-        return payload;
-      });
-      state.adminToken = result.access_token;
-      sessionStorage.setItem(ADMIN_KEY, state.adminToken);
-      $("#admin-login-form").classList.add("hidden");
-      $("#admin-content-form").classList.remove("hidden");
-      await loadAdminEditor();
+      await authenticateAdmin($("#admin-username").value, $("#admin-password").value);
     } catch (error) {
       setError(errorBox, error.message);
     }
@@ -755,7 +846,7 @@
     const headers = new Headers(options.headers || {});
     headers.set("Authorization", `Bearer ${state.adminToken}`);
     if (options.body) headers.set("Content-Type", "application/json");
-    const response = await fetch(path, { ...options, headers });
+    const response = await fetch(apiUrl(path), { ...options, headers });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || `Request failed (${response.status})`);
     return payload;
@@ -764,7 +855,7 @@
   async function loadAdminEditor() {
     const [config, downloads] = await Promise.all([
       adminApi("/api/admin/config"),
-      fetch("/api/downloads").then((response) => response.json()),
+      fetch(apiUrl("/api/downloads")).then((response) => response.json()),
     ]);
     const text = config.landing_text || {};
     $("#cms-creator").value = text.creator_name || "";
@@ -812,17 +903,24 @@
 
   function openAdminModal() {
     $("#admin-modal").classList.remove("hidden");
+    $("#admin-modal").classList.remove("admin-folio");
     document.body.classList.add("modal-open");
     if (state.adminToken) {
+      appPage.classList.add("admin-mode");
       $("#admin-login-form").classList.add("hidden");
       $("#admin-content-form").classList.remove("hidden");
       void loadAdminEditor().catch((error) => {
         sessionStorage.removeItem(ADMIN_KEY);
         state.adminToken = "";
+        appPage.classList.remove("admin-mode");
         $("#admin-content-form").classList.add("hidden");
         $("#admin-login-form").classList.remove("hidden");
         setError($("#admin-error"), error.message);
       });
+    } else {
+      appPage.classList.remove("admin-mode");
+      $("#admin-login-form").classList.remove("hidden");
+      $("#admin-content-form").classList.add("hidden");
     }
   }
 
@@ -850,6 +948,27 @@
   }
 
   function bindEvents() {
+    $(".github-button").href = apiUrl("/api/auth/github");
+    $(".github-button").addEventListener("click", (event) => {
+      event.preventDefault();
+      const consent = $("#privacy-consent");
+      if (!consent.checked) {
+        $("#privacy-consent-field").classList.remove("hidden");
+        consent.required = true;
+        setError($("#auth-error"), "You must accept the privacy framework to register an account.");
+        consent.focus();
+        return;
+      }
+      consent.required = false;
+      sessionStorage.setItem(OAUTH_CONSENT_KEY, "true");
+      location.assign(apiUrl("/api/auth/github?privacy_policy_accepted=true"));
+    });
+    if (IS_NATIVE_APP) {
+      $(".github-button").classList.add("hidden");
+      $(".auth-divider").classList.add("hidden");
+      $(".password-note").textContent = "Sign in with your verified email or mobile number. GitHub app sign-in requires OAuth deep-link configuration.";
+      $(".password-note").prepend(Object.assign(document.createElement("span"), { textContent: "⌑" }));
+    }
     $("#nav-login").addEventListener("click", () => {
       switchAuthMode("login");
       authModal(true);
@@ -861,15 +980,35 @@
     $$("[data-close-modal]").forEach((button) => button.addEventListener("click", () => {
       $("#auth-modal").classList.add("hidden");
       $("#admin-modal").classList.add("hidden");
+      $("#admin-modal").classList.remove("admin-folio");
+      appPage.classList.remove("admin-mode");
       document.body.classList.remove("modal-open");
     }));
     $("#auth-form").addEventListener("submit", (event) => void submitAuth(event));
+    $("#privacy-consent").addEventListener("invalid", () => {
+      setError($("#auth-error"), "You must accept the privacy framework to register an account.");
+    });
+    const closePrivacyModal = () => {
+      $("#privacy-modal").classList.add("hidden");
+      if ($("#auth-modal").classList.contains("hidden") && $("#admin-modal").classList.contains("hidden")) {
+        document.body.classList.remove("modal-open");
+      }
+    };
+    $("#privacy-policy-open").addEventListener("click", () => {
+      $("#privacy-modal").classList.remove("hidden");
+      document.body.classList.add("modal-open");
+      $("#privacy-close").focus();
+    });
+    $("#privacy-close").addEventListener("click", closePrivacyModal);
+    $("#privacy-accept-close").addEventListener("click", closePrivacyModal);
     $("#admin-open").addEventListener("click", openAdminModal);
     $("#admin-login-form").addEventListener("submit", (event) => void adminLogin(event));
     $("#admin-content-form").addEventListener("submit", (event) => void saveAdminContent(event));
     $("#admin-logout").addEventListener("click", () => {
       sessionStorage.removeItem(ADMIN_KEY);
       state.adminToken = "";
+      appPage.classList.remove("admin-mode");
+      $("#admin-modal").classList.remove("admin-folio");
       $("#admin-content-form").classList.add("hidden");
       $("#admin-login-form").classList.remove("hidden");
     });
@@ -908,7 +1047,8 @@
     $("#new-chat").addEventListener("click", newConversation);
     $("#refresh-history").addEventListener("click", () => void refreshHistory());
     $("#profile-button").addEventListener("click", () => $("#profile-menu").classList.toggle("hidden"));
-    $("#logout-button").addEventListener("click", clearSession);
+    $("#logout-button").addEventListener("click", () => clearSession());
+    $("#delete-account-button").addEventListener("click", () => void deleteAccount());
     $("#canvas-toggle").addEventListener("click", () => {
       if (appPage.classList.contains("with-canvas")) hideCanvas();
       else showCanvas();
@@ -918,7 +1058,8 @@
     $("#preview-go").addEventListener("click", () => {
       try {
         const url = new URL($("#preview-url").value);
-        if (url.origin !== location.origin) throw new Error("Preview only supports this Aureon host.");
+        const allowedOrigin = new URL(API_BASE_URL || location.origin).origin;
+        if (url.origin !== allowedOrigin) throw new Error("Preview only supports this Aureon host.");
         previewSite(`${url.pathname}${url.search}`);
       } catch (error) {
         showToast(error.message || "Enter a valid Aureon site path.");
