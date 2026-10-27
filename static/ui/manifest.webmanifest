@@ -13,7 +13,7 @@
   "categories": ["productivity", "utilities"],
   "icons": [
     {
-      "src": "/ui/aureon-app-icon.png",
+      "src": "/ui/aureon-app-icon.png?v=17",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

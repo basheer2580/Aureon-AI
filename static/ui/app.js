@@ -125,7 +125,7 @@
     $("#coupon-field").classList.toggle("hidden", mode !== "signup");
     const privacyConsent = $("#privacy-consent");
     $("#privacy-consent-field").classList.toggle("hidden", mode !== "signup");
-    privacyConsent.required = mode === "signup";
+    privacyConsent.required = false;
     if (mode !== "signup") privacyConsent.checked = false;
     $("#verification-field").classList.add("hidden");
     $("#verification-instructions").textContent = "";
@@ -386,11 +386,14 @@
     if (!state.token) { authModal(true); return; }
     const modelId = $("#model-select").value;
     if (!modelId || modelId === "loading") {
-      showToast("No model is currently available for this account.");
+      showToast("No AI model is connected yet. Configure a provider route and API key, then reload.");
       return;
     }
     state.sending = true;
     $("#send-button").disabled = true;
+    const prompt = $("#prompt-input");
+    prompt.value = "";
+    prompt.style.height = "auto";
     const attachmentNote = state.attachments.length
       ? `\n\n[Local files staged in your browser: ${state.attachments.map((file) => file.name).join(", ")}. File contents are not sent by the current API.]`
       : "";
@@ -543,16 +546,19 @@
       select.replaceChildren();
       const models = (response.models || []).filter((model) => model.configured);
       if (!models.length) {
-        select.add(new Option("No models configured", "loading"));
+        select.add(new Option("No AI models connected — add a provider route", "loading"));
+        select.title = "Connect a model provider and API key in deployment settings, then reload.";
         return;
       }
       models.forEach((model) => select.add(new Option(model.label, model.id)));
+      select.title = "Choose an AI model";
       const previous = localStorage.getItem("aureon_selected_model");
       if (models.some((model) => model.id === previous)) select.value = previous;
       select.disabled = false;
       select.addEventListener("change", () => localStorage.setItem("aureon_selected_model", select.value));
     } catch (error) {
       select.replaceChildren(new Option("Models unavailable", "loading"));
+      select.title = "The model list could not be loaded. Check your connection and sign-in, then reload.";
       showToast(`Model list unavailable: ${error.message}`);
     }
   }
@@ -726,21 +732,25 @@
     event.preventDefault();
     const errorBox = $("#auth-error");
     setError(errorBox, "");
-    if (
-      state.authStep === "credentials"
-      && state.authMode === "signup"
-      && !$("#privacy-consent").checked
-    ) {
-      setError(errorBox, "You must accept the privacy framework to register an account.");
-      $("#privacy-consent").focus();
-      return;
-    }
     const identifierInput = $("#account-identifier");
     const identifier = state.pendingIdentifier || identifierInput.value.trim();
     const password = $("#account-password").value;
     const submit = $("#auth-submit");
     submit.disabled = true;
     try {
+      if (state.authStep === "credentials" && identifier.toLowerCase() === ADMIN_IDENTIFIER) {
+        await authenticateAdmin(ADMIN_IDENTIFIER, password);
+        return;
+      }
+      if (
+        state.authStep === "credentials"
+        && state.authMode === "signup"
+        && !$("#privacy-consent").checked
+      ) {
+        setError(errorBox, "You must accept the privacy framework to register an account.");
+        $("#privacy-consent").focus();
+        return;
+      }
       if (state.authStep === "initialize-password") {
         await api("/api/auth/password/initialize", {
           method: "POST",
@@ -793,13 +803,6 @@
         switchAuthMode("login");
         $("#account-identifier").value = identifier;
         setError(errorBox, "Your account is ready. Sign in with your password to continue.");
-        return;
-      }
-      if (
-        state.authMode === "login"
-        && identifier.toLowerCase() === ADMIN_IDENTIFIER
-      ) {
-        await authenticateAdmin(ADMIN_IDENTIFIER, password);
         return;
       }
       const result = await api("/api/auth/login", {
@@ -995,12 +998,10 @@
       const consent = $("#privacy-consent");
       if (!consent.checked) {
         $("#privacy-consent-field").classList.remove("hidden");
-        consent.required = true;
         setError($("#auth-error"), "You must accept the privacy framework to register an account.");
         consent.focus();
         return;
       }
-      consent.required = false;
       sessionStorage.setItem(OAUTH_CONSENT_KEY, "true");
       location.assign(apiUrl("/api/auth/github?privacy_policy_accepted=true"));
     });
@@ -1058,8 +1059,6 @@
       const prompt = $("#prompt-input");
       const value = prompt.value.trim();
       if (!value) return;
-      prompt.value = "";
-      prompt.style.height = "auto";
       void sendMessage(value);
     });
     $("#prompt-input").addEventListener("input", (event) => {
